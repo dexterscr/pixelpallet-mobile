@@ -1,8 +1,11 @@
 package net.kdt.pojavlaunch.pixelpallet;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import net.kdt.pojavlaunch.Tools;
+import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import net.kdt.pojavlaunch.utils.DownloadUtils;
 import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
 import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
@@ -12,21 +15,26 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 
 /**
- * Instalador "um clique" do PixelPallet.
+ * Instalador "um clique" do PixelPallet, otimizado para mobile.
  *
  * Reaproveita a MESMA distribution.json do launcher desktop (pixelpallet-distribution):
- * baixa os mods (Pixelmon, CustomNPCs, PalletCoins) para a pasta de mods da instância
- * e cria o perfil Forge 1.12.2.
+ * baixa os mods para a instância, cria o perfil Forge 1.12.2 e aplica um conjunto de
+ * otimizações balanceadas (bom FPS x visual) para o jogador abrir e jogar sem configurar.
  *
- * ESTADO: primeira fatia — compila e baixa os mods, mas ainda PRECISA DE:
- *   1. Instalar o Forge 1.12.2 via o instalador de Forge do Pojav (ForgeDownloadTask)
- *      antes de lançar — o perfil aponta para {@link #FORGE_VERSION_ID}.
- *   2. Injetar o servidor PixelPallet no servers.dat da instância.
- *   3. Fluxo de UI (botão "JOGAR PixelPallet" + progresso).
- * Ver PIXELPALLET_AUTOINSTALL.md. Precisa de validação em aparelho real.
+ * Otimizações aplicadas (perfil "Balanceado"):
+ *   - Renderer Holy GL4ES (opengles2) — melhor compatibilidade/desempenho em 1.12.2
+ *   - Escala de resolução 90% (renderiza um pouco menor => mais FPS)
+ *   - JVM args afinados (G1GC de baixa pausa, flags do Forge)
+ *   - options.txt pré-configurado (render distance 8, gráficos "fast", VBO, sem nuvens, etc.)
+ *   - RAM: mantida no auto-detect do Pojav (device-aware, evita OOM em aparelho fraco)
+ *
+ * AINDA FALTA (ver PIXELPALLET_AUTOINSTALL.md): instalar Forge via ForgeDownloadTask,
+ * injetar servidor no servers.dat, OptiFine via scraper do Pojav e o fluxo de UI.
+ * Precisa de validação em aparelho real.
  */
 public final class PixelPalletInstaller {
 
@@ -41,6 +49,37 @@ public final class PixelPalletInstaller {
     /** Versão do Forge que o perfil vai lançar (precisa estar instalada no Pojav). */
     public static final String FORGE_VERSION_ID = "1.12.2-forge-14.23.5.2860";
 
+    /** Renderer recomendado para 1.12.2. */
+    private static final String RENDERER = "opengles2"; // Holy GL4ES 1.1.4
+
+    /** Escala de resolução (perfil balanceado). */
+    private static final int RESOLUTION_RATIO = 90;
+
+    /** JVM args balanceados para Forge 1.12.2 em mobile (o -Xmx é definido pelo Pojav). */
+    private static final String JVM_ARGS = String.join(" ",
+            "-XX:+UnlockExperimentalVMOptions",
+            "-XX:+UseG1GC",
+            "-XX:MaxGCPauseMillis=50",
+            "-XX:G1HeapRegionSize=16M",
+            "-XX:+DisableExplicitGC",
+            "-Dfml.ignoreInvalidMinecraftCertificates=true",
+            "-Dfml.ignorePatchDiscrepancies=true");
+
+    /** options.txt balanceado (chaves relevantes de performance para 1.12.2). */
+    private static final String OPTIMIZED_OPTIONS = String.join("\n",
+            "renderDistance:8",
+            "particles:1",        // 0=todas, 1=reduzidas, 2=mínimas
+            "fancyGraphics:false", // gráficos "fast"
+            "ao:1",               // ambient occlusion mínimo
+            "renderClouds:false",
+            "useVbo:true",
+            "mipmapLevels:2",
+            "maxFps:120",
+            "fboEnable:true",
+            "entityShadows:false",
+            "enableVsync:false",
+            "guiScale:0") + "\n";
+
     private PixelPalletInstaller() {}
 
     public interface ProgressListener {
@@ -48,10 +87,10 @@ public final class PixelPalletInstaller {
     }
 
     /**
-     * Baixa a distribuição, os mods e cria/atualiza o perfil.
+     * Baixa a distribuição, os mods, cria/atualiza o perfil e aplica as otimizações.
      * Deve rodar FORA da main thread (faz I/O de rede).
      */
-    public static void install(ProgressListener listener) throws IOException {
+    public static void install(Context context, ProgressListener listener) throws IOException {
         log(listener, "Buscando distribuicao...");
         String json = DownloadUtils.downloadString(DISTRIBUTION_URL);
 
@@ -71,6 +110,9 @@ public final class PixelPalletInstaller {
             throw new IOException("distribution.json invalida", e);
         }
 
+        log(listener, "Aplicando otimizacoes...");
+        writeOptimizedOptions(instanceDir);
+        applyGlobalOptimizedPrefs();
         createOrUpdateProfile();
         log(listener, "Concluido!");
     }
@@ -101,12 +143,36 @@ public final class PixelPalletInstaller {
         }
     }
 
+    /** Escreve o options.txt otimizado no diretorio da instancia (se ainda nao existir). */
+    private static void writeOptimizedOptions(File instanceDir) {
+        File optionsFile = new File(instanceDir, "options.txt");
+        if (optionsFile.exists()) return; // nao sobrescreve escolhas do jogador
+        if (!instanceDir.exists() && !instanceDir.mkdirs()) return;
+        try (FileWriter writer = new FileWriter(optionsFile)) {
+            writer.write(OPTIMIZED_OPTIONS);
+        } catch (IOException e) {
+            Log.w(TAG, "Falha ao escrever options.txt otimizado", e);
+        }
+    }
+
+    /** Aplica renderer e escala de resolucao globais (o launcher e single-purpose PixelPallet). */
+    private static void applyGlobalOptimizedPrefs() {
+        SharedPreferences prefs = LauncherPreferences.DEFAULT_PREF;
+        if (prefs == null) return;
+        prefs.edit()
+                .putString("renderer", RENDERER)
+                .putInt("resolutionRatio", RESOLUTION_RATIO)
+                .apply();
+    }
+
     private static void createOrUpdateProfile() {
         LauncherProfiles.load();
         MinecraftProfile profile = new MinecraftProfile();
         profile.name = "PixelPallet";
         profile.lastVersionId = FORGE_VERSION_ID;
         profile.gameDir = "./custom_instances/" + INSTANCE_NAME;
+        profile.pojavRendererName = RENDERER;
+        profile.javaArgs = JVM_ARGS;
         LauncherProfiles.mainProfileJson.profiles.put(INSTANCE_NAME, profile);
         LauncherProfiles.write();
     }
