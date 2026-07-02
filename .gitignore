@@ -1,7 +1,8 @@
 /.gradle
 /build
 /*/build
-app_pojavlauncher/src/main/assets/components/jre
+# PixelPallet: o JRE Java 8 é embutido no repo (o CI upstream não busca mais os artifacts).
+# app_pojavlauncher/src/main/assets/components/jre
 /app_pojavlauncher/src/main/assets/components/jre-new/
 /app_pojavlauncher/src/main/assets/components/jre-21/
 local.properties

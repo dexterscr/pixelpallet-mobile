@@ -34,41 +34,9 @@ jobs:
           cd app_pojavlauncher/libs
           wget https://github.com/PojavLauncherTeam/LTW/releases/latest/download/ltw-release.aar
 
-      # Runtime Java baixado de outro repo. Em forks os artifacts podem nao estar
-      # acessiveis; continue-on-error permite gerar o APK "sem runtime" (o app baixa
-      # o Java no primeiro launch).
-      - name: Get JRE 8
-        continue-on-error: true
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          workflow: build.yml
-          path: app_pojavlauncher/src/main/assets/components/jre
-          workflow_conclusion: success
-          repo: PojavLauncherTeam/android-openjdk-build-multiarch
-          branch: buildjre8
-          name: jre8-pojav
-
-      - name: Get JRE17
-        continue-on-error: true
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          workflow: build.yml
-          path: app_pojavlauncher/src/main/assets/components/jre-new
-          workflow_conclusion: success
-          repo: PojavLauncherTeam/android-openjdk-build-multiarch
-          branch: buildjre17-21
-          name: jre17-pojav
-
-      - name: Get JRE21
-        continue-on-error: true
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          workflow: build.yml
-          path: app_pojavlauncher/src/main/assets/components/jre-21
-          workflow_conclusion: success
-          repo: PojavLauncherTeam/android-openjdk-build-multiarch
-          branch: buildjre17-21
-          name: jre21-pojav
+      # PixelPallet: o JRE Java 8 (Minecraft 1.12.2) já vem embutido no repo em
+      # app_pojavlauncher/src/main/assets/components/jre — não baixamos mais dos artifacts
+      # do upstream (que sumiram). Só precisamos do Java 8 para rodar o Pixelmon.
 
       - uses: gradle/actions/setup-gradle@v4
         with:
