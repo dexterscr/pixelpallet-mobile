@@ -14,7 +14,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 
@@ -100,10 +102,14 @@ public final class PixelPalletInstaller {
             throw new IOException("Nao foi possivel criar a pasta de mods: " + modsDir);
         }
 
+        String serverName = "PixelPallet";
+        String serverAddress = null;
         try {
             JSONObject root = new JSONObject(json);
             JSONArray servers = root.getJSONArray("servers");
             JSONObject server = servers.getJSONObject(0);
+            serverName = server.optString("name", serverName);
+            serverAddress = server.optString("address", null);
             JSONArray modules = server.getJSONArray("modules");
             downloadForgeMods(listener, modules, modsDir);
         } catch (JSONException e) {
@@ -112,6 +118,10 @@ public final class PixelPalletInstaller {
 
         log(listener, "Aplicando otimizacoes...");
         writeOptimizedOptions(instanceDir);
+        if (serverAddress != null && !serverAddress.isEmpty()) {
+            log(listener, "Adicionando servidor a lista...");
+            writeServersDat(instanceDir, serverName, serverAddress);
+        }
         applyGlobalOptimizedPrefs();
         createOrUpdateProfile();
         log(listener, "Concluido!");
@@ -152,6 +162,36 @@ public final class PixelPalletInstaller {
             writer.write(OPTIMIZED_OPTIONS);
         } catch (IOException e) {
             Log.w(TAG, "Falha ao escrever options.txt otimizado", e);
+        }
+    }
+
+    /**
+     * Escreve o servers.dat (NBT nao-comprimido) com o servidor do PixelPallet, para o
+     * jogador ja encontrar o servidor na lista de multiplayer. Nao sobrescreve um existente.
+     * Formato NBT: writeUTF do DataOutputStream ja usa o mesmo modified-UTF8 que o NBT.
+     */
+    private static void writeServersDat(File instanceDir, String serverName, String address) {
+        File serversDat = new File(instanceDir, "servers.dat");
+        if (serversDat.exists()) return;
+        if (!instanceDir.exists() && !instanceDir.mkdirs()) return;
+        try (DataOutputStream out = new DataOutputStream(new FileOutputStream(serversDat))) {
+            out.writeByte(10);            // TAG_Compound (raiz)
+            out.writeUTF("");             // nome da raiz
+            out.writeByte(9);             // TAG_List
+            out.writeUTF("servers");      // nome da lista
+            out.writeByte(10);            // tipo dos elementos = TAG_Compound
+            out.writeInt(1);              // 1 servidor
+            // elemento: compound com name/ip
+            out.writeByte(8);             // TAG_String
+            out.writeUTF("name");
+            out.writeUTF(serverName);
+            out.writeByte(8);             // TAG_String
+            out.writeUTF("ip");
+            out.writeUTF(address);
+            out.writeByte(0);             // TAG_End (fim do compound do servidor)
+            out.writeByte(0);             // TAG_End (fim da raiz)
+        } catch (IOException e) {
+            Log.w(TAG, "Falha ao escrever servers.dat", e);
         }
     }
 
