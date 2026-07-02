@@ -19,6 +19,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Instalador "um clique" do PixelPallet, otimizado para mobile.
@@ -115,7 +117,7 @@ public final class PixelPalletInstaller {
             serverName = server.optString("name", serverName);
             serverAddress = server.optString("address", null);
             JSONArray modules = server.getJSONArray("modules");
-            downloadForgeMods(listener, modules, modsDir);
+            syncForgeMods(listener, modules, modsDir);
         } catch (JSONException e) {
             throw new IOException("distribution.json invalida", e);
         }
@@ -131,9 +133,15 @@ public final class PixelPalletInstaller {
         log(listener, "Concluido!");
     }
 
-    /** Baixa apenas os modulos do tipo ForgeMod (o Forge em si e instalado a parte). */
-    private static void downloadForgeMods(ProgressListener listener, JSONArray modules, File modsDir)
+    /**
+     * Sincroniza a pasta de mods com a distribution (roda a cada JOGAR):
+     *  - baixa mods faltando ou que mudaram (compara nome + tamanho esperado);
+     *  - remove versões antigas / mods que saíram da distribuição.
+     * Assim o cliente sempre fica na versão mais atual sem re-baixar tudo à toa.
+     */
+    private static void syncForgeMods(ProgressListener listener, JSONArray modules, File modsDir)
             throws IOException {
+        Set<String> expected = new HashSet<>();
         for (int i = 0; i < modules.length(); i++) {
             JSONObject module = modules.optJSONObject(i);
             if (module == null) continue;
@@ -144,16 +152,31 @@ public final class PixelPalletInstaller {
             String url = artifact.optString("url", null);
             if (url == null || url.isEmpty()) continue;
 
+            long expectedSize = artifact.optLong("size", -1);
             String name = module.optString("name", "mod-" + i);
             String fileName = url.substring(url.lastIndexOf('/') + 1);
+            expected.add(fileName);
             File dest = new File(modsDir, fileName);
 
-            if (dest.exists() && dest.length() > 0) {
-                log(listener, name + " (ja existe)");
+            // Já está atualizado? (nome bate e tamanho confere)
+            if (dest.exists() && (expectedSize < 0 || dest.length() == expectedSize)) {
+                log(listener, name + " (atualizado)");
                 continue;
             }
-            log(listener, "Baixando " + name + "...");
+            log(listener, "Atualizando " + name + "...");
             DownloadUtils.downloadFile(url, dest);
+        }
+
+        // Remove versões antigas / mods removidos da distribuição.
+        File[] existing = modsDir.listFiles();
+        if (existing != null) {
+            for (File f : existing) {
+                if (f.isFile() && f.getName().endsWith(".jar") && !expected.contains(f.getName())) {
+                    log(listener, "Removendo mod antigo: " + f.getName());
+                    //noinspection ResultOfMethodCallIgnored
+                    f.delete();
+                }
+            }
         }
     }
 

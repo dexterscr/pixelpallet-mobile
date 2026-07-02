@@ -62,13 +62,9 @@ public class MainMenuFragment extends Fragment {
         mEditProfileButton.setOnClickListener(v -> mVersionSpinner.openProfileEditor(requireActivity()));
 
         mPlayButton.setOnClickListener(v -> {
-            // PixelPallet: se o Forge/instância ainda não está pronta, roda o setup "um clique"
-            // (baixa Forge + mods + otimizações + servidor). Caso contrário, lança normal.
-            if (PixelPalletSetup.isForgeInstalled()) {
-                ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true);
-                return;
-            }
-            Toast.makeText(requireContext(), "Preparando PixelPallet, aguarde...", Toast.LENGTH_LONG).show();
+            // PixelPallet um-clique: SEMPRE verifica/atualiza os mods pela distribution
+            // (baixa só o que mudou), instala o Forge se preciso, e então lança o jogo.
+            Toast.makeText(requireContext(), "Verificando atualizações...", Toast.LENGTH_SHORT).show();
             PixelPalletSetup.start(requireActivity(), new PixelPalletSetup.SetupListener() {
                 @Override public void onProgress(String message) { android.util.Log.i("PixelPallet", message); }
                 @Override public void onReady() { ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true); }
