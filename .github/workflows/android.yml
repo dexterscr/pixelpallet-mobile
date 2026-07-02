@@ -34,7 +34,11 @@ jobs:
           cd app_pojavlauncher/libs
           wget https://github.com/PojavLauncherTeam/LTW/releases/latest/download/ltw-release.aar
 
+      # Runtime Java baixado de outro repo. Em forks os artifacts podem nao estar
+      # acessiveis; continue-on-error permite gerar o APK "sem runtime" (o app baixa
+      # o Java no primeiro launch).
       - name: Get JRE 8
+        continue-on-error: true
         uses: dawidd6/action-download-artifact@v9
         with:
           workflow: build.yml
@@ -45,6 +49,7 @@ jobs:
           name: jre8-pojav
 
       - name: Get JRE17
+        continue-on-error: true
         uses: dawidd6/action-download-artifact@v9
         with:
           workflow: build.yml
@@ -55,6 +60,7 @@ jobs:
           name: jre17-pojav
 
       - name: Get JRE21
+        continue-on-error: true
         uses: dawidd6/action-download-artifact@v9
         with:
           workflow: build.yml
@@ -95,13 +101,15 @@ jobs:
           mv app_pojavlauncher/build/outputs/apk/debug/app_pojavlauncher-debug.apk out/app-debug.apk
 
       - name: Build APK without runtime
+        continue-on-error: true
         run: |
-          rm -r app_pojavlauncher/src/main/assets/components/jre
-          rm -r app_pojavlauncher/src/main/assets/components/jre-new
-          rm -r app_pojavlauncher/src/main/assets/components/jre-21
+          rm -rf app_pojavlauncher/src/main/assets/components/jre
+          rm -rf app_pojavlauncher/src/main/assets/components/jre-new
+          rm -rf app_pojavlauncher/src/main/assets/components/jre-21
           gradle assembleDebug
           mv app_pojavlauncher/build/outputs/apk/debug/app_pojavlauncher-debug.apk out/app-debug-noruntime.apk
       - name: Gen md5sums
+        continue-on-error: true
         run: |
           md5sum out/app-debug.apk > out/app-debug.md5
           md5sum out/app-debug-noruntime.apk > out/app-debug-noruntime.md5
@@ -113,10 +121,12 @@ jobs:
           path: out/app-debug.*
 
       - name: Upload AAB
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
           path: out/app-gplay.aab
+          if-no-files-found: ignore
 
       - name: Upload onto the Google Play testing track
         continue-on-error: true
