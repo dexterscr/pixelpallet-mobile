@@ -30,8 +30,23 @@ Estados persistidos pra não repetir download (checagem de hash/versão).
 - O instalador do Forge roda como uma "activity separada" — orquestrar *instala Forge → depois baixa mods → depois lança* exige lidar com resultados de activity. É a parte mais delicada.
 - Só validável via **CI (build) + seu celular**. Iterativo.
 
-## Progresso
-- [ ] Componente `PixelPalletSetup` (orquestrador)
+## Otimização mobile (perfil "Balanceado")
+Aplicada pelo `PixelPalletInstaller`:
+- [x] Renderer Holy GL4ES (`opengles2`) — perfil + global
+- [x] Escala de resolução 90% (`resolutionRatio`)
+- [x] JVM args G1GC de baixa pausa + flags do Forge
+- [x] `options.txt` pré-configurado (render distance 8, gráficos fast, VBO, sem nuvens, entity shadows off, vsync off)
+- [x] RAM no auto-detect device-aware do Pojav
+- [ ] Mods de otimização (FoamFix, Phosphor, VanillaFix, BetterFPS) — adicionar na distribution.json (beneficia desktop também)
+- [ ] OptiFine 1.12.2 — baixar em runtime via o scraper do Pojav (OptiFineUtils/OptiFineDownloadTask)
+- [ ] Pixelmon config pré-tunada
+
+## Progresso do instalador
+- [x] `PixelPalletInstaller`: baixa mods + cria perfil + otimizações (compila via CI)
+- [ ] Instalar Forge 1.12.2 automaticamente (ForgeDownloadTask)
 - [ ] UI: botão/tela "JOGAR PixelPallet" + progresso
 - [ ] Injeção do `servers.dat`
 - [ ] Teste ponta a ponta no aparelho
+
+## Validado (emulador oficial no PC)
+- [x] App roda (ARM via emulador x86), login offline, **download do Minecraft com conta local** (removido o gate anti-pirataria em `MinecraftDownloader`), jogo inicia e renderiza. Lentidão só pela tradução ARM→x86 do emulador; ARM nativo roda normal.
