@@ -21,6 +21,7 @@ import net.kdt.pojavlaunch.R;
 import net.kdt.pojavlaunch.Tools;
 import net.kdt.pojavlaunch.extra.ExtraConstants;
 import net.kdt.pojavlaunch.extra.ExtraCore;
+import net.kdt.pojavlaunch.pixelpallet.PixelPalletSetup;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
 import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
@@ -60,7 +61,23 @@ public class MainMenuFragment extends Fragment {
         });
         mEditProfileButton.setOnClickListener(v -> mVersionSpinner.openProfileEditor(requireActivity()));
 
-        mPlayButton.setOnClickListener(v -> ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true));
+        mPlayButton.setOnClickListener(v -> {
+            // PixelPallet: se o Forge/instância ainda não está pronta, roda o setup "um clique"
+            // (baixa Forge + mods + otimizações + servidor). Caso contrário, lança normal.
+            if (PixelPalletSetup.isForgeInstalled()) {
+                ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true);
+                return;
+            }
+            Toast.makeText(requireContext(), "Preparando PixelPallet, aguarde...", Toast.LENGTH_LONG).show();
+            PixelPalletSetup.start(requireActivity(), new PixelPalletSetup.SetupListener() {
+                @Override public void onProgress(String message) { android.util.Log.i("PixelPallet", message); }
+                @Override public void onReady() { ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true); }
+                @Override public void onError(String message) {
+                    requireActivity().runOnUiThread(() ->
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show());
+                }
+            });
+        });
 
         mShareLogsButton.setOnClickListener((v) -> shareLog(requireContext()));
 

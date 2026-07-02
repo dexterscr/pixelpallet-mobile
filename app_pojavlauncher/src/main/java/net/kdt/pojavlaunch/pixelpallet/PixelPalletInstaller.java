@@ -202,6 +202,8 @@ public final class PixelPalletInstaller {
         prefs.edit()
                 .putString("renderer", RENDERER)
                 .putInt("resolutionRatio", RESOLUTION_RATIO)
+                // Seleciona o perfil PixelPallet como atual (para o botao JOGAR lancar ele).
+                .putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, INSTANCE_NAME)
                 .apply();
     }
 
