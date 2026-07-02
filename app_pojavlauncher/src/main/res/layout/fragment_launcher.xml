@@ -46,6 +46,7 @@
 			<View
 				android:id="@+id/social_divider"
 				style="@style/LauncherFragment_Divider"
+				android:visibility="gone"
 				android:layout_marginVertical="@dimen/padding_large"
 				app:layout_constraintTop_toTopOf="parent"
 				app:layout_constraintStart_toStartOf="@id/center_guideline"
