@@ -48,6 +48,10 @@ public final class PixelPalletInstaller {
 
     public static final String INSTANCE_NAME = "pixelpallet";
 
+    /** Chave (UUID fixo) do perfil no launcher_profiles — evita duplicatas e sobrevive à
+     *  normalização de IDs do Pojav (que converteria uma chave não-UUID). */
+    public static final String PROFILE_KEY = "b1a1b1a1-c0de-4a11-9e77-000000000001";
+
     /** Versão do Forge que o perfil vai lançar (precisa estar instalada no Pojav). */
     public static final String FORGE_VERSION_ID = "1.12.2-forge-14.23.5.2860";
 
@@ -203,7 +207,7 @@ public final class PixelPalletInstaller {
                 .putString("renderer", RENDERER)
                 .putInt("resolutionRatio", RESOLUTION_RATIO)
                 // Seleciona o perfil PixelPallet como atual (para o botao JOGAR lancar ele).
-                .putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, INSTANCE_NAME)
+                .putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, PROFILE_KEY)
                 .apply();
     }
 
@@ -215,7 +219,7 @@ public final class PixelPalletInstaller {
         profile.gameDir = "./custom_instances/" + INSTANCE_NAME;
         profile.pojavRendererName = RENDERER;
         profile.javaArgs = JVM_ARGS;
-        LauncherProfiles.mainProfileJson.profiles.put(INSTANCE_NAME, profile);
+        LauncherProfiles.mainProfileJson.profiles.put(PROFILE_KEY, profile);
         LauncherProfiles.write();
     }
 
