@@ -431,4 +431,15 @@
     <string name="bta_installer_nightly_versions">Nightly BTA versions</string>
     <string name="newdl_extracting_native_libraries">Extracting native libraries (%d/%d)</string>
     <string name="toast_not_available_demo">This is not available in demo mode</string>
+
+    <!-- PixelPallet onboarding -->
+    <string name="pp_onb_skip">Pular</string>
+    <string name="pp_onb_next">Próximo</string>
+    <string name="pp_onb_start">Começar a jogar</string>
+    <string name="pp_onb_1_title">Bem-vindo ao PixelPallet</string>
+    <string name="pp_onb_1_desc">Seu launcher oficial pra jogar Pixelmon no servidor, direto do celular. Simples, rápido e sem complicação.</string>
+    <string name="pp_onb_2_title">Um toque e pronto</string>
+    <string name="pp_onb_2_desc">Toque em JOGAR e a gente cuida de tudo: baixa e instala o Forge, o Pixelmon e todos os mods automaticamente. Você não precisa configurar nada.</string>
+    <string name="pp_onb_3_title">Otimizado pro seu celular</string>
+    <string name="pp_onb_3_desc">Na primeira vez, baixamos os arquivos (leva alguns minutinhos com boa internet). Depois é só abrir e jogar — já deixamos tudo otimizado pra rodar suave. 🔥</string>
 </resources>

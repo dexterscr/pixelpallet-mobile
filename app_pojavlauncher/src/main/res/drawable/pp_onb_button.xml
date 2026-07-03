@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botão principal do onboarding: vermelho sólido, cantos arredondados, ripple claro. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#40FFFFFF">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/minebutton_color" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+</ripple>
