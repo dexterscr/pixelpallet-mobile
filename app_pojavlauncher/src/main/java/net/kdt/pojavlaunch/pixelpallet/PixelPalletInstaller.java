@@ -234,6 +234,20 @@ public final class PixelPalletInstaller {
                 .apply();
     }
 
+    /**
+     * Garante que o perfil PixelPallet exista e esteja selecionado, já na abertura do app
+     * (sem rede). Assim o seletor mostra "PixelPallet" desde a primeira execução, em vez do
+     * perfil padrão do Pojav. É idempotente e barato — pode ser chamado sempre.
+     */
+    public static void ensureProfileReady() {
+        try {
+            applyGlobalOptimizedPrefs();
+            createOrUpdateProfile();
+        } catch (Throwable t) {
+            Log.w(TAG, "ensureProfileReady falhou: " + t);
+        }
+    }
+
     private static void createOrUpdateProfile() {
         LauncherProfiles.load();
         MinecraftProfile profile = new MinecraftProfile();

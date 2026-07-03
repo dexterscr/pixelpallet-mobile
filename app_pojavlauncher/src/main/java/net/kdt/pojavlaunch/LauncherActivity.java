@@ -35,6 +35,7 @@ import net.kdt.pojavlaunch.lifecycle.ContextAwareDoneListener;
 import net.kdt.pojavlaunch.lifecycle.ContextExecutor;
 import net.kdt.pojavlaunch.modloaders.modpacks.ModloaderInstallTracker;
 import net.kdt.pojavlaunch.modloaders.modpacks.imagecache.IconCacheJanitor;
+import net.kdt.pojavlaunch.pixelpallet.PixelPalletInstaller;
 import net.kdt.pojavlaunch.pixelpallet.PixelPalletOnboardingActivity;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceFragment;
@@ -166,6 +167,8 @@ public class LauncherActivity extends BaseActivity {
 
     private ActivityResultLauncher<String> mRequestNotificationPermissionLauncher;
     private WeakReference<Runnable> mRequestNotificationPermissionRunnable;
+    /** Adia o pedido de notificação enquanto o tutorial estiver aberto. */
+    private boolean mDeferNotificationCheck = false;
 
     @Override
     protected boolean shouldIgnoreNotch() {
@@ -183,9 +186,13 @@ public class LauncherActivity extends BaseActivity {
         setContentView(R.layout.activity_pojav_launcher);
 
         // PixelPallet: mostra o tutorial de boas-vindas na primeira execução.
-        if (PixelPalletOnboardingActivity.shouldShow(this)) {
+        boolean showOnboarding = PixelPalletOnboardingActivity.shouldShow(this);
+        if (showOnboarding) {
             startActivity(new android.content.Intent(this, PixelPalletOnboardingActivity.class));
         }
+
+        // Garante que o perfil PixelPallet apareça no seletor desde a 1ª abertura.
+        PixelPalletInstaller.ensureProfileReady();
 
         FragmentManager fragmentManager = getSupportFragmentManager();
         // If we don't have a back stack root yet...
@@ -213,7 +220,9 @@ public class LauncherActivity extends BaseActivity {
         );
         getWindow().setBackgroundDrawable(null);
         bindViews();
-        checkNotificationPermission();
+        // Não pedir permissão de notificação por cima do tutorial: adia pro fim do onboarding.
+        if (showOnboarding) mDeferNotificationCheck = true;
+        else checkNotificationPermission();
         mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         ProgressKeeper.addTaskCountListener(mDoubleLaunchPreventionListener);
         ProgressKeeper.addTaskCountListener((mProgressServiceKeeper = new ProgressServiceKeeper(this)));
@@ -241,6 +250,11 @@ public class LauncherActivity extends BaseActivity {
         super.onResume();
         ContextExecutor.setActivity(this);
         mInstallTracker.attach();
+        // Tutorial terminou: agora sim pede a permissão de notificação (uma vez).
+        if (mDeferNotificationCheck && !PixelPalletOnboardingActivity.shouldShow(this)) {
+            mDeferNotificationCheck = false;
+            checkNotificationPermission();
+        }
     }
 
     @Override
