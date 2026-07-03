@@ -114,12 +114,12 @@
 		app:layout_constraintTop_toTopOf="@+id/mc_version_spinner" />
 
 
-	<!-- Painel de rodapé (arredondado no topo) que segura o seletor de perfil + JOGAR -->
+	<!-- Fundo transparente: a fênix aparece atrás dos cards flutuantes -->
 	<View
 		android:id="@+id/_background_display_view"
 		android:layout_width="match_parent"
 		android:layout_height="0dp"
-		android:background="@drawable/pixelpallet_footer_panel"
+		android:background="@android:color/transparent"
 		android:translationZ="-2dp"
 
 		app:layout_constraintBottom_toBottomOf="parent"

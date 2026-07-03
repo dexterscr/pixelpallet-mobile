@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Painel do topo (barra de conta): cantos de baixo arredondados, tom escuro da marca. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="#F0161619" />
-    <corners
-        android:bottomLeftRadius="22dp"
-        android:bottomRightRadius="22dp" />
-</shape>

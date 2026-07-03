@@ -149,8 +149,8 @@ public class mcAccountSpinner extends AppCompatSpinner implements AdapterView.On
     @SuppressLint("ClickableViewAccessibility")
     private void init(){
         // Set visual properties
-        // PixelPallet: painel de cabeçalho arredondado (combina com o rodapé/cards).
-        setBackgroundResource(R.drawable.pixelpallet_header_panel);
+        // PixelPallet: card flutuante, na mesma linguagem dos botões do menu.
+        setBackgroundResource(R.drawable.pixelpallet_card_static);
         mLoginBarPaint.setColor(getResources().getColor(R.color.minebutton_color));
         mLoginBarPaint.setStrokeWidth(getResources().getDimensionPixelOffset(R.dimen._2sdp));
 
