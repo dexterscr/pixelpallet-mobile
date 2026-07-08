@@ -48,6 +48,10 @@ public final class PixelPalletInstaller {
     public static final String DISTRIBUTION_URL =
             "https://dexterlaboratorio.github.io/pixelpallet-distribution/distribution.json";
 
+    /** Config da tela inicial custom (CustomMainMenu) — hospedado na distribution. */
+    public static final String MAINMENU_URL =
+            "https://dexterlaboratorio.github.io/pixelpallet-distribution/servers/pixelpallet-1.12.2/menu/mainmenu.json";
+
     public static final String INSTANCE_NAME = "pixelpallet";
 
     /** Chave (UUID fixo) do perfil no launcher_profiles — evita duplicatas e sobrevive à
@@ -124,6 +128,7 @@ public final class PixelPalletInstaller {
 
         log(listener, "Aplicando otimizacoes...");
         writeOptimizedOptions(instanceDir);
+        writeMainMenuConfig(listener, instanceDir);
         if (serverAddress != null && !serverAddress.isEmpty()) {
             log(listener, "Adicionando servidor a lista...");
             writeServersDat(instanceDir, serverName, serverAddress);
@@ -177,6 +182,28 @@ public final class PixelPalletInstaller {
                     f.delete();
                 }
             }
+        }
+    }
+
+    /**
+     * Baixa o mainmenu.json da distribution e escreve em config/CustomMainMenu/, para o mod
+     * CustomMainMenu montar a tela inicial personalizada do PixelPallet. Atualiza a cada JOGAR
+     * (assim mudanças no menu chegam sem atualizar o app). Falha em silêncio: se não conseguir
+     * baixar, o jogo abre com a tela inicial padrão em vez de travar.
+     */
+    private static void writeMainMenuConfig(ProgressListener listener, File instanceDir) {
+        try {
+            String json = DownloadUtils.downloadString(MAINMENU_URL);
+            if (json == null || json.trim().isEmpty()) return;
+            File cmmDir = new File(instanceDir, "config/CustomMainMenu");
+            if (!cmmDir.exists() && !cmmDir.mkdirs()) return;
+            File out = new File(cmmDir, "mainmenu.json");
+            try (FileOutputStream fos = new FileOutputStream(out)) {
+                fos.write(json.getBytes("UTF-8"));
+            }
+            log(listener, "Tela inicial personalizada aplicada.");
+        } catch (Exception e) {
+            Log.w(TAG, "Nao foi possivel aplicar a tela inicial custom: " + e);
         }
     }
 
