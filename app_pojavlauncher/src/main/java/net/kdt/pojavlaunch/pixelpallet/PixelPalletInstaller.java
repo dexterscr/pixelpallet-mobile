@@ -48,10 +48,6 @@ public final class PixelPalletInstaller {
     public static final String DISTRIBUTION_URL =
             "https://dexterlaboratorio.github.io/pixelpallet-distribution/distribution.json";
 
-    /** Config da tela inicial custom (CustomMainMenu) — hospedado na distribution. */
-    public static final String MAINMENU_URL =
-            "https://dexterlaboratorio.github.io/pixelpallet-distribution/servers/pixelpallet-1.12.2/menu/mainmenu.json";
-
     public static final String INSTANCE_NAME = "pixelpallet";
 
     /** Chave (UUID fixo) do perfil no launcher_profiles — evita duplicatas e sobrevive à
@@ -122,13 +118,13 @@ public final class PixelPalletInstaller {
             serverAddress = server.optString("address", null);
             JSONArray modules = server.getJSONArray("modules");
             syncForgeMods(listener, modules, modsDir);
+            syncFileModules(listener, modules, instanceDir);
         } catch (JSONException e) {
             throw new IOException("distribution.json invalida", e);
         }
 
         log(listener, "Aplicando otimizacoes...");
         writeOptimizedOptions(instanceDir);
-        writeMainMenuConfig(listener, instanceDir);
         if (serverAddress != null && !serverAddress.isEmpty()) {
             log(listener, "Adicionando servidor a lista...");
             writeServersDat(instanceDir, serverName, serverAddress);
@@ -186,24 +182,34 @@ public final class PixelPalletInstaller {
     }
 
     /**
-     * Baixa o mainmenu.json da distribution e escreve em config/CustomMainMenu/, para o mod
-     * CustomMainMenu montar a tela inicial personalizada do PixelPallet. Atualiza a cada JOGAR
-     * (assim mudanças no menu chegam sem atualizar o app). Falha em silêncio: se não conseguir
-     * baixar, o jogo abre com a tela inicial padrão em vez de travar.
+     * Processa os módulos do tipo "File" da distribution: baixa cada arquivo para o caminho
+     * relativo à instância indicado em artifact.path (ex.: o mainmenu.json em
+     * config/CustomMainMenu/ e o fundo da tela em resources/pixelpallet/...). Assim os assets da
+     * tela inicial custom chegam pelos dois launchers (o Helios já trata File nativamente).
+     * Baixa só o que mudou (compara tamanho). Falha em silêncio por arquivo.
      */
-    private static void writeMainMenuConfig(ProgressListener listener, File instanceDir) {
-        try {
-            String json = DownloadUtils.downloadString(MAINMENU_URL);
-            if (json == null || json.trim().isEmpty()) return;
-            File cmmDir = new File(instanceDir, "config/CustomMainMenu");
-            if (!cmmDir.exists() && !cmmDir.mkdirs()) return;
-            File out = new File(cmmDir, "mainmenu.json");
-            try (FileOutputStream fos = new FileOutputStream(out)) {
-                fos.write(json.getBytes("UTF-8"));
+    private static void syncFileModules(ProgressListener listener, JSONArray modules, File instanceDir) {
+        for (int i = 0; i < modules.length(); i++) {
+            JSONObject module = modules.optJSONObject(i);
+            if (module == null || !"File".equals(module.optString("type", ""))) continue;
+            JSONObject artifact = module.optJSONObject("artifact");
+            if (artifact == null) continue;
+            String url = artifact.optString("url", null);
+            String relPath = artifact.optString("path", null);
+            if (url == null || url.isEmpty() || relPath == null || relPath.isEmpty()) continue;
+            try {
+                File dest = new File(instanceDir, relPath);
+                long expectedSize = artifact.optLong("size", -1);
+                if (dest.exists() && expectedSize >= 0 && dest.length() == expectedSize) {
+                    continue; // já atualizado
+                }
+                File parent = dest.getParentFile();
+                if (parent != null && !parent.exists() && !parent.mkdirs()) continue;
+                DownloadUtils.downloadFile(url, dest);
+                log(listener, module.optString("name", "arquivo") + " (ok)");
+            } catch (Exception e) {
+                Log.w(TAG, "Falha ao baixar File module " + relPath + ": " + e);
             }
-            log(listener, "Tela inicial personalizada aplicada.");
-        } catch (Exception e) {
-            Log.w(TAG, "Nao foi possivel aplicar a tela inicial custom: " + e);
         }
     }
 
