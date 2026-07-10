@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Botão-card do menu PixelPallet: fundo escuro translúcido, cantos arredondados,
-     borda sutil e ripple vermelho da marca. -->
+     borda sutil e ripple azul da marca. -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#4DEF4B4B">
+    android:color="#4D2BB7F5">
     <item>
         <shape android:shape="rectangle">
             <solid android:color="#B3141419" />
