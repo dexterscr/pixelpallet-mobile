@@ -16,6 +16,9 @@ import org.apache.commons.io.*;
 public class DownloadUtils {
     public static final String USER_AGENT = Tools.APP_NAME;
     private static final int TIME_OUT = 10000;
+    // Timeout de LEITURA maior: downloads grandes (ex.: Pixelmon ~385MB) numa conexao
+    // instavel podem ficar >10s sem receber bytes; 60s evita estourar a toa.
+    private static final int READ_TIME_OUT = 60000;
 
     public static void download(String url, OutputStream os) throws IOException {
         download(new URL(url), os);
@@ -28,7 +31,7 @@ public class DownloadUtils {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestProperty("User-Agent", USER_AGENT);
             conn.setConnectTimeout(TIME_OUT);
-            conn.setReadTimeout(TIME_OUT);
+            conn.setReadTimeout(READ_TIME_OUT);
             conn.setDoInput(true);
             conn.connect();
             if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
@@ -70,7 +73,7 @@ public class DownloadUtils {
 
         HttpURLConnection conn = (HttpURLConnection) new URL(urlInput).openConnection();
         conn.setConnectTimeout(TIME_OUT);
-        conn.setReadTimeout(TIME_OUT);
+        conn.setReadTimeout(READ_TIME_OUT);
         InputStream readStr = conn.getInputStream();
         try (FileOutputStream fos = new FileOutputStream(outputFile)) {
             int current;
