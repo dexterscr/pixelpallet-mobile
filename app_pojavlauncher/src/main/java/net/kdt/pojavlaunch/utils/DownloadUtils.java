@@ -62,9 +62,87 @@ public class DownloadUtils {
 
     public static void downloadFile(String url, File out) throws IOException {
         FileUtils.ensureParentDirectory(out);
-        try (FileOutputStream fileOutputStream = new FileOutputStream(out)) {
-            download(url, fileOutputStream);
+        downloadFileResumable(url, out);
+    }
+
+    /**
+     * Baixa um arquivo aguentando conexoes instaveis: retoma de onde parou usando
+     * HTTP Range e re-tenta ate MAX_ATTEMPTS. Essencial para arquivos grandes (Pixelmon
+     * ~385MB) em dados moveis, onde a conexao pode estagnar varias vezes durante o download.
+     */
+    private static void downloadFileResumable(String url, File out) throws IOException {
+        final int MAX_ATTEMPTS = 8;
+        long totalSize = -1;
+        IOException last = null;
+
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            long existing = out.exists() ? out.length() : 0;
+            // Ja temos o arquivo completo? (sabendo o tamanho total)
+            if (totalSize > 0 && existing >= totalSize) return;
+
+            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            try {
+                conn.setRequestProperty("User-Agent", USER_AGENT);
+                conn.setConnectTimeout(TIME_OUT);
+                conn.setReadTimeout(READ_TIME_OUT);
+                conn.setDoInput(true);
+                if (existing > 0) conn.setRequestProperty("Range", "bytes=" + existing + "-");
+                conn.connect();
+
+                int code = conn.getResponseCode();
+                boolean append;
+                if (code == HttpURLConnection.HTTP_PARTIAL) {          // 206: Range aceito
+                    append = true;
+                    totalSize = parseTotalFromContentRange(conn.getHeaderField("Content-Range"), totalSize);
+                } else if (code == HttpURLConnection.HTTP_OK) {        // 200: sem Range, recomeca
+                    append = false;
+                    existing = 0;
+                    int len = conn.getContentLength();
+                    if (len > 0) totalSize = len;
+                } else if (code == 416) {                             // ja temos tudo
+                    return;
+                } else {
+                    throw new IOException("Servidor retornou HTTP " + code + " em " + url);
+                }
+
+                byte[] buffer = new byte[65536];
+                try (InputStream is = conn.getInputStream();
+                     FileOutputStream fos = new FileOutputStream(out, append)) {
+                    int read;
+                    while ((read = is.read(buffer)) != -1) {
+                        fos.write(buffer, 0, read);
+                    }
+                }
+
+                // Terminou o stream: completo se atingiu o tamanho total (ou se e desconhecido).
+                if (totalSize < 0 || out.length() >= totalSize) return;
+                // Caiu antes do fim sem lancar excecao -> proxima tentativa retoma.
+                last = new IOException("Download incompleto (" + out.length() + "/" + totalSize + ")");
+            } catch (IOException e) {
+                last = e;
+                Log.w("DownloadUtils", "Tentativa " + attempt + "/" + MAX_ATTEMPTS
+                        + " falhou (" + e.getMessage() + "), retomando...");
+                try { Thread.sleep(1500); } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+            } finally {
+                conn.disconnect();
+            }
         }
+        throw last != null ? last : new IOException("Falha ao baixar " + url);
+    }
+
+    /** Extrai o tamanho total do header Content-Range ("bytes X-Y/TOTAL"). */
+    private static long parseTotalFromContentRange(String contentRange, long fallback) {
+        if (contentRange != null) {
+            int slash = contentRange.lastIndexOf('/');
+            if (slash >= 0 && slash < contentRange.length() - 1) {
+                try {
+                    return Long.parseLong(contentRange.substring(slash + 1).trim());
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return fallback;
     }
 
     public static void downloadFileMonitored(String urlInput, File outputFile, @Nullable byte[] buffer,
