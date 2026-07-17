@@ -16,9 +16,12 @@ import org.json.JSONObject;
 
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.security.MessageDigest;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -154,18 +157,29 @@ public final class PixelPalletInstaller {
             if (url == null || url.isEmpty()) continue;
 
             long expectedSize = artifact.optLong("size", -1);
+            String expectedMd5 = artifact.optString("MD5", null);
             String name = module.optString("name", "mod-" + i);
             String fileName = url.substring(url.lastIndexOf('/') + 1);
             expected.add(fileName);
             File dest = new File(modsDir, fileName);
 
-            // Já está atualizado? (nome bate e tamanho confere)
-            if (dest.exists() && (expectedSize < 0 || dest.length() == expectedSize)) {
+            // Já está atualizado? Confere tamanho E integridade (MD5). Um jar do tamanho
+            // certo mas corrompido (download instável) reprova aqui e é re-baixado — evita
+            // o "You do not have Pixelmon installed" causado por jar corrompido no cliente.
+            boolean sizeOk = expectedSize < 0 || dest.length() == expectedSize;
+            if (dest.exists() && sizeOk && (expectedMd5 == null || md5Matches(dest, expectedMd5))) {
                 log(listener, name + " (atualizado)");
                 continue;
             }
             log(listener, "Atualizando " + name + "...");
             DownloadUtils.downloadFile(url, dest);
+            // Valida o que acabou de baixar; se veio corrompido, remove e falha (o próximo
+            // JOGAR retoma/re-baixa em vez de tentar conectar sem o mod).
+            if (expectedMd5 != null && !md5Matches(dest, expectedMd5)) {
+                //noinspection ResultOfMethodCallIgnored
+                dest.delete();
+                throw new IOException(name + ": download corrompido (MD5 nao confere)");
+            }
         }
 
         // Remove versões antigas / mods removidos da distribuição.
@@ -296,5 +310,26 @@ public final class PixelPalletInstaller {
     private static void log(ProgressListener listener, String message) {
         Log.i(TAG, message);
         if (listener != null) listener.onProgress(message);
+    }
+
+    /** Confere o MD5 de um arquivo contra o esperado (hex, case-insensitive). */
+    private static boolean md5Matches(File file, String expectedMd5) {
+        try (InputStream in = new FileInputStream(file)) {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] buffer = new byte[65536];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                md.update(buffer, 0, read);
+            }
+            StringBuilder sb = new StringBuilder();
+            for (byte b : md.digest()) {
+                sb.append(Character.forDigit((b >> 4) & 0xF, 16));
+                sb.append(Character.forDigit(b & 0xF, 16));
+            }
+            return sb.toString().equalsIgnoreCase(expectedMd5);
+        } catch (Exception e) {
+            Log.w(TAG, "Falha ao calcular MD5 de " + file.getName() + ": " + e);
+            return false; // na duvida, re-baixa
+        }
     }
 }
