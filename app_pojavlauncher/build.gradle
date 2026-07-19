@@ -128,9 +128,12 @@ android {
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.customDebug
-            resValue 'string', 'application_package', 'net.kdt.pojavlaunch.debug'
-            resValue 'string', 'storageProviderAuthorities', 'net.kdt.pojavlaunch.scoped.gamefolder.debug'
-            resValue 'string', 'shareProviderAuthority', 'net.kdt.pojavlaunch.scoped.controlfolder.debug'
+            // Autoridades no nosso namespace: usar as do upstream faz o Android
+            // recusar a instalação em quem já tem o PojavLauncher original
+            // ("conflito com um pacote já existente").
+            resValue 'string', 'application_package', 'br.pixelpallet.mobile.debug'
+            resValue 'string', 'storageProviderAuthorities', 'br.pixelpallet.mobile.scoped.gamefolder.debug'
+            resValue 'string', 'shareProviderAuthority', 'br.pixelpallet.mobile.scoped.controlfolder.debug'
         }
         proguard {
             initWith debug
@@ -149,8 +152,11 @@ android {
             // defaultConfig already set
             // multiDexEnabled = true
             // debuggable = true
-            resValue 'string', 'storageProviderAuthorities', 'net.kdt.pojavlaunch.scoped.gamefolder'
-            resValue 'string', 'application_package', 'net.kdt.pojavlaunch'
+            // Ver comentário no bloco debug: autoridade de provider precisa ser
+            // única no aparelho, senão colide com o PojavLauncher original.
+            resValue 'string', 'storageProviderAuthorities', 'br.pixelpallet.mobile.scoped.gamefolder'
+            resValue 'string', 'application_package', 'br.pixelpallet.mobile'
+            resValue 'string', 'shareProviderAuthority', 'br.pixelpallet.mobile.scoped.controlfolder'
         }
         gplay {
             initWith release
