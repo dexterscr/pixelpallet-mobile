@@ -9,6 +9,9 @@ import net.kdt.pojavlaunch.*;
 
 @Keep
 public class CustomControls {
+	/** Versão do formato gravada nos layouts salvos (V3.2). */
+	public static final int CURRENT_VERSION = 8;
+
 	public int version = -1;
     public float scaledAt;
 	public List<ControlData> mControlDataList;
@@ -57,13 +60,13 @@ public class CustomControls {
 		this.mControlDataList.add(new ControlData(ctx, R.string.control_jump, new int[]{LwjglGlfwKeycode.GLFW_KEY_SPACE}, "${right} - ${margin} * 2 - ${width}", "${bottom} - ${margin} * 2 - ${height}", true));
 
 		//The default controls are conform to the V3
-		version = 8;
+		version = CURRENT_VERSION;
 	}
 
 	
 	public void save(String path) throws IOException {
 		//Current version is the V3.2 so the version as to be marked as 8 !
-		version = 8;
+		version = CURRENT_VERSION;
 
 		Tools.write(path, Tools.GLOBAL_GSON.toJson(this));
 	}

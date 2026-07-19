@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
+import net.kdt.pojavlaunch.customcontrols.CustomControls;
 import net.kdt.pojavlaunch.utils.FileUtils;
 
 import org.apache.commons.io.IOUtils;
@@ -85,9 +86,9 @@ public class ImportControlActivity extends Activity {
         //Import and verify thread
         //Kill the app if the file isn't valid.
         new Thread(() -> {
-            importControlFile();
+            boolean copied = importControlFile();
 
-            if(verify())mIsFileVerified = true;
+            if(copied && verify())mIsFileVerified = true;
             else runOnUiThread(() -> {
                 Toast.makeText(
                         ImportControlActivity.this,
@@ -129,17 +130,26 @@ public class ImportControlActivity extends Activity {
     /**
      * Copy a the file from the Intent data with a provided name into the controlmap folder.
      */
-    private void importControlFile(){
-        InputStream is;
-        try {
-            is = getContentResolver().openInputStream(mUriData);
-            OutputStream os = new FileOutputStream(Tools.CTRLMAP_PATH + "/" + "TMP_IMPORT_FILE" + ".json");
-            IOUtils.copy(is, os);
+    private boolean importControlFile(){
+        File tmp = new File(Tools.CTRLMAP_PATH + "/TMP_IMPORT_FILE.json");
+        // Sobra de uma tentativa anterior faria verify() validar o arquivo errado
+        if (tmp.exists() && !tmp.delete()) return false;
 
-            os.close();
-            is.close();
-        } catch (IOException e) {
+        File dir = tmp.getParentFile();
+        if (dir != null && !dir.exists() && !dir.mkdirs()) return false;
+
+        try (InputStream is = getContentResolver().openInputStream(mUriData);
+             OutputStream os = new FileOutputStream(tmp)) {
+            if (is == null) return false;
+            IOUtils.copy(is, os);
+            return true;
+        } catch (Exception e) {
+            // Exception, não IOException: openInputStream lança SecurityException
+            // quando a permissão da Uri não foi concedida (comum em arquivo vindo
+            // de outro app) e IllegalArgumentException em Uri malformada. Nenhuma
+            // das duas é IOException — sem isso, elas derrubavam o app.
             e.printStackTrace();
+            return false;
         }
     }
 
@@ -188,7 +198,15 @@ public class ImportControlActivity extends Activity {
         try{
             String jsonLayoutData = Tools.read(Tools.CTRLMAP_PATH + "/TMP_IMPORT_FILE.json");
             JSONObject layoutJobj = new JSONObject(jsonLayoutData);
-            return layoutJobj.has("version") && layoutJobj.has("mControlDataList");
+
+            // Layout V1 não tem o campo "version" — é assim que o LayoutConverter
+            // o identifica. Exigir "version" aqui rejeitava, como "arquivo
+            // inválido", justamente os layouts antigos que o app sabe converter.
+            if (!layoutJobj.has("mControlDataList")) return false;
+            if (!layoutJobj.has("version")) return true; // V1
+
+            int version = layoutJobj.getInt("version");
+            return version >= 1 && version <= CustomControls.CURRENT_VERSION;
         }catch (JSONException | IOException e) {
             e.printStackTrace();
             return false;
